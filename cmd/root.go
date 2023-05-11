@@ -14,6 +14,10 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	rootCmd.AddCommand(newChainsCMD())
+	rootCmd.AddCommand(newAddressesCMD())
+	rootCmd.AddCommand(newTransactionsCMD())
+	rootCmd.AddCommand(newWalletCMD())
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

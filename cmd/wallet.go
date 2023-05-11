@@ -26,8 +26,9 @@ var (
 
 func newWalletCMD() *cobra.Command {
 	walletCMD := &cobra.Command{
-		Use:   "chains",
-		Short: "Wallet operations",
+		Use:     "wallets",
+		Short:   "Wallet operations",
+		Aliases: []string{"wallet", "w"},
 	}
 
 	walletCMD.AddCommand(createCMD)

@@ -51,8 +51,9 @@ var (
 
 func newChainsCMD() *cobra.Command {
 	chainCMD := &cobra.Command{
-		Use:   "chains",
-		Short: "Addresses all chains operations",
+		Use:     "chains",
+		Aliases: []string{"chain", "c"},
+		Short:   "Addresses all chains operations",
 	}
 
 	chainCMD.AddCommand(createChainCMD)

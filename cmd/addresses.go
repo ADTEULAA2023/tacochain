@@ -26,8 +26,9 @@ var (
 
 func newAddressesCMD() *cobra.Command {
 	addressesCMD := &cobra.Command{
-		Use:   "chains",
-		Short: "Taco chain is a blockchain client used to interact in the taco network",
+		Use:     "addresses",
+		Aliases: []string{"address", "addr", "a"},
+		Short:   "Taco chain is a blockchain client used to interact in the taco network",
 	}
 
 	addressesCMD.AddCommand(listAddresses)
