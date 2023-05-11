@@ -1,117 +1,199 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"fmt"
+	"os"
+	"runtime"
 
 	"github.com/dgraph-io/badger"
 )
 
+const (
+	dbPath      = "./tmp/blocks"
+	dbFile      = "./tmp/blocks/MANIFEST"          // This can be used to verify that the blockchain exists
+	genesisData = "First Transaction from Genesis" // This is arbitrary data for our genesis data
+)
+
+//BlockChain is an array of block pointers
 type BlockChain struct {
 	LastHash []byte
 	Database *badger.DB
 }
 
-func (chain *BlockChain) AddBlock(data string, difficulty uint) error {
+func DBexists() bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+//ContinueBlockChain will be called to append to an existing blockchain
+func ContinueBlockChain(address string) *BlockChain {
+	if !DBexists() {
+		fmt.Println("No blockchain found, please create one first")
+		runtime.Goexit()
+	}
+
 	var lastHash []byte
 
-	err := chain.Database.View(func(txn *badger.Txn) error {
+	opts := badger.DefaultOptions(dbPath)
+	db, err := badger.Open(opts)
+	Handle(err)
+
+	err = db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte("lh"))
-		if err != nil {
-			return err
-		}
+		Handle(err)
 		err = item.Value(func(val []byte) error {
 			lastHash = val
 			return nil
 		})
-		if err != nil {
-			return err
-		}
+		Handle(err)
 		return err
 	})
-	if err != nil {
-		return err
+	Handle(err)
+
+	chain := BlockChain{lastHash, db}
+	return &chain
+}
+
+//InitBlockChain will be what starts a new blockChain
+func InitBlockChain(address string) *BlockChain {
+	var lastHash []byte
+
+	if DBexists() {
+		fmt.Println("blockchain already exists")
+		runtime.Goexit()
 	}
 
-	newBlock := CreateBlock(data, lastHash, difficulty)
+	opts := badger.DefaultOptions(dbPath)
+	db, err := badger.Open(opts)
+	Handle(err)
 
+	err = db.Update(func(txn *badger.Txn) error {
+
+		cbtx := CoinbaseTx(address, genesisData)
+		genesis := Genesis(cbtx)
+		fmt.Println("Genesis Created")
+		err = txn.Set(genesis.Hash, genesis.Serialize())
+		Handle(err)
+		err = txn.Set([]byte("lh"), genesis.Hash)
+
+		lastHash = genesis.Hash
+
+		return err
+
+	})
+
+	Handle(err)
+
+	blockchain := BlockChain{lastHash, db}
+	return &blockchain
+}
+
+// AddBlock Will add a Block type unit to a blockchain
+func (chain *BlockChain) AddBlock(transactions []*Transaction) {
+	var lastHash []byte
+
+	err := chain.Database.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte("lh"))
+		Handle(err)
+		err = item.Value(func(val []byte) error {
+			lastHash = val
+			return nil
+		})
+		Handle(err)
+		return err
+	})
+	Handle(err)
+
+	newBlock := CreateBlock(transactions, lastHash)
 	err = chain.Database.Update(func(transaction *badger.Txn) error {
-		serialization, err := newBlock.Serialize()
-		if err != nil {
-			return err
-		}
-
-		err = transaction.Set(newBlock.Hash, serialization)
-		if err != nil {
-			return err
-		}
-
+		err := transaction.Set(newBlock.Hash, newBlock.Serialize())
+		Handle(err)
 		err = transaction.Set([]byte("lh"), newBlock.Hash)
 
 		chain.LastHash = newBlock.Hash
 		return err
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	Handle(err)
 }
 
-func Genesis(difficulty uint) *Block {
-	return CreateBlock("Genesis", []byte{}, difficulty)
-}
+func (chain *BlockChain) FindUnspentTransactions(address string) []Transaction {
+	var unspentTxs []Transaction
 
-func InitBlockChain(dbPath string, difficulty uint) (*BlockChain, error) {
-	var lastHash []byte
+	spentTXOs := make(map[string][]int)
 
-	opts := badger.DefaultOptions(dbPath)
-	opts.Truncate = true
+	iter := chain.Iterator()
 
-	db, err := badger.Open(opts)
-	if err != nil {
-		return nil, err
-	}
-	//part 1 finished
+	for {
+		block := iter.Next()
 
-	err = db.Update(func(txn *badger.Txn) error {
-		// "lh" stand for last hash
-		if _, err := txn.Get([]byte("lh")); err == badger.ErrKeyNotFound {
-			fmt.Println("No existing blockchain found")
-			genesis := Genesis(difficulty)
-			fmt.Println("Genesis proved")
-			serialization, err := genesis.Serialize()
-			if err != nil {
-				return err
+		for _, tx := range block.Transactions {
+			txID := hex.EncodeToString(tx.ID)
+
+		Outputs:
+			for outIdx, out := range tx.Outputs {
+				if spentTXOs[txID] != nil {
+					for _, spentOut := range spentTXOs[txID] {
+						if spentOut == outIdx {
+							continue Outputs
+						}
+					}
+				}
+				if out.CanBeUnlocked(address) {
+					unspentTxs = append(unspentTxs, *tx)
+				}
 			}
-
-			err = txn.Set(genesis.Hash, serialization)
-			if err != nil {
-				return err
-			}
-			lastHash = genesis.Hash
-			return txn.Set([]byte("lh"), genesis.Hash)
-			//part 2/3 finished
-		} else {
-			item, err := txn.Get([]byte("lh"))
-			if err != nil {
-				return err
-			}
-			err = item.Value(func(val []byte) error {
-				lastHash = val
-				return nil
-			})
-			if err != nil {
-				return err
+			if !tx.IsCoinbase() {
+				for _, in := range tx.Inputs {
+					if in.CanUnlock(address) {
+						inTxID := hex.EncodeToString(in.ID)
+						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
+					}
+				}
 			}
 		}
 
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		if len(block.PrevHash) == 0 {
+			break
+		}
+	}
+	return unspentTxs
+}
+
+func (chain *BlockChain) FindUTXO(address string) []TxOutput {
+	var UTXOs []TxOutput
+	unspentTransactions := chain.FindUnspentTransactions(address)
+	for _, tx := range unspentTransactions {
+		for _, out := range tx.Outputs {
+			if out.CanBeUnlocked(address) {
+				UTXOs = append(UTXOs, out)
+			}
+		}
 	}
 
-	blockchain := BlockChain{lastHash, db}
-	return &blockchain, nil
-	//that's everything!
+	return UTXOs
+}
+
+func (chain *BlockChain) FindSpendableOutputs(address string, amount int) (int, map[string][]int) {
+	unspentOuts := make(map[string][]int)
+	unspentTxs := chain.FindUnspentTransactions(address)
+	accumulated := 0
+
+Work:
+	for _, tx := range unspentTxs {
+		txID := hex.EncodeToString(tx.ID)
+		for outIdx, out := range tx.Outputs {
+			if out.CanBeUnlocked(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOuts[txID] = append(unspentOuts[txID], outIdx)
+
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+	return accumulated, unspentOuts
 }

@@ -7,38 +7,31 @@ type BlockChainIterator struct {
 	Database    *badger.DB
 }
 
+// Iterator takes our BlockChain struct and returns it as a BlockCHainIterator struct
 func (chain *BlockChain) Iterator() *BlockChainIterator {
 	iterator := BlockChainIterator{chain.LastHash, chain.Database}
 
 	return &iterator
 }
 
-func (iterator *BlockChainIterator) Next() (*Block, error) {
+// Next will iterate through the BlockChainIterator
+func (iterator *BlockChainIterator) Next() *Block {
 	var block *Block
 
 	err := iterator.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(iterator.CurrentHash)
-		if err != nil {
-			return err
-		}
+		Handle(err)
 
 		err = item.Value(func(val []byte) error {
-			block, err = Deserialize(val)
-			if err != nil {
-				return err
-			}
+			block = Deserialize(val)
 			return nil
 		})
-		if err != nil {
-			return err
-		}
+		Handle(err)
 		return err
 	})
-	if err != nil {
-		return nil, err
-	}
+	Handle(err)
 
 	iterator.CurrentHash = block.PrevHash
 
-	return block, nil
+	return block
 }
