@@ -10,6 +10,7 @@ import (
 
 var (
 	listChainsCMD = &cobra.Command{
+		Use:  "list",
 		Short: `Lists all of the chains in the blockchain`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chain := blockchain.ContinueBlockChain("")
@@ -34,6 +35,7 @@ var (
 	}
 
 	createChainCMD = &cobra.Command{
+		Use:  "create",
 		Short: `Create new chain in the blockchain`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {

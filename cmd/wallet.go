@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ADTEULAA2023/tacochain/internal/wallet"
 	"github.com/spf13/cobra"
@@ -9,12 +10,14 @@ import (
 
 var (
 	createCMD = &cobra.Command{
+		Use:   "create",
 		Short: `Creates a new wallet in the blockchain`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wallets, err := wallet.CreateWallets()
-			if err != nil {
+			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
+
 			address := wallets.AddWallet()
 			wallets.SaveFile()
 

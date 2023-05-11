@@ -162,8 +162,8 @@ func (chain *BlockChain) FindUnspentTransactions(address string) []Transaction {
 	return unspentTxs
 }
 
-func (chain *BlockChain) FindUTXO(address string) []TxOutput {
-	var UTXOs []TxOutput
+func (chain *BlockChain) FindUTXO(address string) []TransactionOutput {
+	var UTXOs []TransactionOutput
 	unspentTransactions := chain.FindUnspentTransactions(address)
 	for _, tx := range unspentTransactions {
 		for _, out := range tx.Outputs {

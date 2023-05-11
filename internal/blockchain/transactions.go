@@ -14,8 +14,8 @@ const reward = 100
 
 type Transaction struct {
 	ID      []byte
-	Inputs  []TxInput
-	Outputs []TxOutput
+	Inputs  []TransactionInput
+	Outputs []TransactionOutput
 }
 
 //TxOutput represents a transaction in the blockchain
@@ -42,11 +42,11 @@ func CoinbaseTx(toAddress, data string) *Transaction {
 	}
 	//Since this is the "first" transaction of the block, it has no previous output to reference.
 	//This means that we initialize it with no ID, and it's OutputIndex is -1
-	txIn := TxInput{[]byte{}, -1, data}
+	txIn := TransactionInput{[]byte{}, -1, data}
 	//txOut will represent the amount of tokens(reward) given to the person(toAddress) that executed CoinbaseTx
-	txOut := TxOutput{reward, toAddress} // You can see it follows {value, PubKey}
+	txOut := TransactionOutput{reward, toAddress} // You can see it follows {value, PubKey}
 
-	tx := Transaction{nil, []TxInput{txIn}, []TxOutput{txOut}}
+	tx := Transaction{nil, []TransactionInput{txIn}, []TransactionOutput{txOut}}
 
 	return &tx
 
@@ -58,8 +58,8 @@ func (tx *Transaction) IsCoinbase() bool {
 }
 
 func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
-	var inputs []TxInput
-	var outputs []TxOutput
+	var inputs []TransactionInput
+	var outputs []TransactionOutput
 
 	acc, validOutputs := chain.FindSpendableOutputs(from, amount)
 
@@ -71,15 +71,15 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 		Handle(err)
 
 		for _, out := range outs {
-			input := TxInput{txID, out, from}
+			input := TransactionInput{txID, out, from}
 			inputs = append(inputs, input)
 		}
 	}
 
-	outputs = append(outputs, TxOutput{amount, to})
+	outputs = append(outputs, TransactionOutput{amount, to})
 
 	if acc > amount {
-		outputs = append(outputs, TxOutput{acc - amount, from})
+		outputs = append(outputs, TransactionOutput{acc - amount, from})
 	}
 
 	tx := Transaction{nil, inputs, outputs}

@@ -1,6 +1,6 @@
 package blockchain
 
-type TxOutput struct {
+type TransactionOutput struct {
 	Value int
 	//Value would be representative of the amount of coins in a transaction
 	PubKey string
@@ -13,8 +13,8 @@ type TxOutput struct {
 //You cannot "make change" with any output.
 //If the Value is 10, in order to give someone 5, we need to make two five coin outputs.
 
-//TxInput is represntative of a reference to a previous TxOutput
-type TxInput struct {
+//TransactionInput is represntative of a reference to a previous TxOutput
+type TransactionInput struct {
 	ID []byte
 	//ID will find the Transaction that a specific output is inside of
 	Out int
@@ -25,10 +25,10 @@ type TxInput struct {
 	//however for this tutorial the Sig will be indentical to the PubKey.
 }
 
-func (in *TxInput) CanUnlock(data string) bool {
+func (in *TransactionInput) CanUnlock(data string) bool {
 	return in.Sig == data
 }
 
-func (out *TxOutput) CanBeUnlocked(data string) bool {
+func (out *TransactionOutput) CanBeUnlocked(data string) bool {
 	return out.PubKey == data
 }
