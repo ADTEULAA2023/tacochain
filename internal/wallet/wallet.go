@@ -2,11 +2,10 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha256"
 	"log"
 
+	"github.com/ADTEULAA2023/tacochain/pkg"
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"golang.org/x/crypto/ripemd160"
 )
@@ -23,21 +22,8 @@ type Wallet struct {
 	PublicKey  []byte
 }
 
-func NewKeyPair() (ecdsa.PrivateKey, []byte) {
-	curve := elliptic.P256()
-
-	private, err := ecdsa.GenerateKey(curve, rand.Reader)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	pub := append(private.PublicKey.X.Bytes(), private.PublicKey.Y.Bytes()...)
-
-	return *private, pub
-}
-
 func MakeWallet() *Wallet {
-	privateKey, publicKey := NewKeyPair()
+	privateKey, publicKey := pkg.NewECDSAKeyPair()
 	wallet := Wallet{privateKey, publicKey}
 	return &wallet
 }

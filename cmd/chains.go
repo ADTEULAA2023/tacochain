@@ -10,15 +10,22 @@ import (
 
 var (
 	listChainsCMD = &cobra.Command{
-		Use:  "list",
+		Use:   "list",
 		Short: `Lists all of the chains in the blockchain`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			chain := blockchain.ContinueBlockChain("")
+			chain, err := blockchain.ContinueBlockChain("")
+			if err != nil {
+				return err
+			}
 			defer chain.Database.Close()
 			iterator := chain.Iterator()
 
 			for {
-				block := iterator.Next()
+				block, err := iterator.Next()
+				if err != nil {
+					return err
+				}
+
 				fmt.Printf("Previous hash: %x\n", block.PrevHash)
 				fmt.Printf("hash: %x\n", block.Hash)
 				pow := blockchain.NewProofOfWork(block)
@@ -35,14 +42,17 @@ var (
 	}
 
 	createChainCMD = &cobra.Command{
-		Use:  "create",
+		Use:   "create",
 		Short: `Create new chain in the blockchain`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return fmt.Errorf("must specify address")
 			}
 
-			newChain := blockchain.InitBlockChain(args[0])
+			newChain, err := blockchain.InitBlockChain(args[0])
+			if err != nil {
+				return err
+			}
 			newChain.Database.Close()
 			fmt.Println("Finished creating chain")
 

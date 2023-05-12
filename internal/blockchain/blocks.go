@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/gob"
-	"log"
 )
 
 //Block is a single unit in the blockchain
@@ -44,31 +43,27 @@ func (bloc *Block) HashTransactions() []byte {
 	return txHash[:]
 }
 
-func (b *Block) Serialize() []byte {
+func (b *Block) Serialize() ([]byte, error) {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
 
 	err := encoder.Encode(b)
-
-	Handle(err)
-
-	return res.Bytes()
-}
-
-func Handle(err error) {
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
+
+	return res.Bytes(), nil
 }
 
-func Deserialize(data []byte) *Block {
+func Deserialize(data []byte) (*Block, error) {
 	var block Block
 
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 
 	err := decoder.Decode(&block)
+	if err != nil {
+		return nil, err
+	}
 
-	Handle(err)
-
-	return &block
+	return &block, nil
 }

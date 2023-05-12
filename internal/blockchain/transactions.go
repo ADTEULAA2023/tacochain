@@ -7,10 +7,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-)
 
-//reward is the amnount of tokens given to someone that "mines" a new block
-const reward = 100
+	"github.com/ADTEULAA2023/tacochain/pkg"
+)
 
 type Transaction struct {
 	ID      []byte
@@ -44,7 +43,7 @@ func CoinbaseTx(toAddress, data string) *Transaction {
 	//This means that we initialize it with no ID, and it's OutputIndex is -1
 	txIn := TransactionInput{[]byte{}, -1, data}
 	//txOut will represent the amount of tokens(reward) given to the person(toAddress) that executed CoinbaseTx
-	txOut := TransactionOutput{reward, toAddress} // You can see it follows {value, PubKey}
+	txOut := TransactionOutput{nil, "", toAddress} // You can see it follows {value, PubKey}
 
 	tx := Transaction{nil, []TransactionInput{txIn}, []TransactionOutput{txOut}}
 
@@ -57,18 +56,20 @@ func (tx *Transaction) IsCoinbase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
 }
 
-func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
+func NewTransaction(from, to string, data []byte, chain *BlockChain) (*Transaction, error) {
 	var inputs []TransactionInput
 	var outputs []TransactionOutput
 
-	acc, validOutputs := chain.FindSpendableOutputs(from, amount)
-
-	if acc < amount {
-		log.Panic("Error: Not enough funds!")
+	validOutputs, err := chain.FindSpendableOutputs(from, data)
+	if err != nil {
+		return nil, err
 	}
+
 	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
-		Handle(err)
+		if err != nil {
+			return nil, err
+		}
 
 		for _, out := range outs {
 			input := TransactionInput{txID, out, from}
@@ -76,14 +77,17 @@ func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction
 		}
 	}
 
-	outputs = append(outputs, TransactionOutput{amount, to})
-
-	if acc > amount {
-		outputs = append(outputs, TransactionOutput{acc - amount, from})
+	private, public, encryptedData, err := pkg.EncryptTransactionData(data)
+	if err != nil {
+		return nil, err
 	}
+
+	outputs = append(outputs, TransactionOutput{encryptedData, public, to})
+	log.Println("==== private key:", private)
+	log.Println("==== public key:", public)
 
 	tx := Transaction{nil, inputs, outputs}
 	tx.SetID()
 
-	return &tx
+	return &tx, nil
 }

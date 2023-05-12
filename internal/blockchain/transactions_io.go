@@ -1,9 +1,9 @@
 package blockchain
 
 type TransactionOutput struct {
-	Value int
-	//Value would be representative of the amount of coins in a transaction
-	PubKey string
+	Data     []byte
+	TxPubKey string
+	Address  string
 	//The Pubkey is needed to "unlock" any coins within an Output. This indicated that YOU are the one that sent it.
 	//You are indentifiable by your PubKey
 	//PubKey in this iteration will be very straightforward, however in an actual application this is a more complex algorithm
@@ -30,5 +30,5 @@ func (in *TransactionInput) CanUnlock(data string) bool {
 }
 
 func (out *TransactionOutput) CanBeUnlocked(data string) bool {
-	return out.PubKey == data
+	return out.Address == data
 }

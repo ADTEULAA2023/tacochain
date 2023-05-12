@@ -15,23 +15,25 @@ func (chain *BlockChain) Iterator() *BlockChainIterator {
 }
 
 // Next will iterate through the BlockChainIterator
-func (iterator *BlockChainIterator) Next() *Block {
+func (iterator *BlockChainIterator) Next() (*Block, error) {
 	var block *Block
 
 	err := iterator.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(iterator.CurrentHash)
-		Handle(err)
+		if err != nil {
+			return err
+		}
 
-		err = item.Value(func(val []byte) error {
-			block = Deserialize(val)
-			return nil
+		return item.Value(func(val []byte) error {
+			block, err = Deserialize(val)
+			return err
 		})
-		Handle(err)
-		return err
 	})
-	Handle(err)
+	if err != nil {
+		return nil, err
+	}
 
 	iterator.CurrentHash = block.PrevHash
 
-	return block
+	return block, nil
 }
